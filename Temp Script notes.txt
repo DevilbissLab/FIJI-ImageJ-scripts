@@ -1,0 +1,47 @@
+open("I:/Waterhouse Collab/_Project Folders/mTBI/test_photos/7.tif");
+run("Split Channels");
+selectWindow("7.tif (green)");
+selectWindow("7.tif (red)");
+run("Subtract Background...", "rolling=1 sliding disable");
+//run("Duplicate...", " ");
+run("Enhance Contrast...", "saturated=0.3 normalize");
+rename("7_axons.tif");
+//run("Auto Threshold", "method=Default white");
+//run("Skeletonize");
+//run("Tubeness", "sigma=1.0000 use");
+run("Ridge Detection", "line_width=3.5 high_contrast=230 low_contrast=87 make_binary method_for_overlap_resolution=NONE sigma=1.8 lower_threshold=1.51 upper_threshold=7.99 minimum_line_length=5 maximum=0");
+run("Invert LUT");
+run("Clear Results");
+run("Analyze Particles...", "  show=Masks display exclude summarize");
+// selects skeleton and measures it
+run("Create Selection");
+run("Measure");
+
+
+
+
+______
+//saveAs("Text", getDirectory("home")+"Summary.txt");
+
+  
+    
+    sum = 0;
+    counter = 0;
+    for (i = 0; i < j - 1; i += 1) {
+        Area = getResult("Area", i);
+        setResult("AxonLengthPerimagepix]", i, Area);
+        sum = sum + Area;
+        if (Area != 0) counter = counter + 1;
+    }
+    setResult("Sum of Axon Length Per Folder [pix]", 0, sum);
+    setResult("Average Axon Length Per Image [pix]", 0, sum / counter);
+    setResult("Axon detection sensitivity:",0,Threshy);
+    setResult("Minimum Axon Length [Pix]",0,MinAxonLength);
+    
+
+    saveAs("Results", stringy + "\\Tracing Data Summary.xls");
+    wait(25);
+    run("Clear Results");
+
+
+	
