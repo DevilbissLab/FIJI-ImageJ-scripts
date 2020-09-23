@@ -1,0 +1,22 @@
+// macro for ImageJ Keyboard shortcuts
+// David Devilbiss
+//
+// Note that keyboard shortcuts will not work unless the macros are installed and the "ImageJ" window, or an image window, is the active 
+// (front) window and has keyboard focus. You install macros using the macro editor's Macros>Install Macros command or the 
+// Plugins>Macros>Install command. Install the two macros in the above example and you will see that the commands
+
+
+macro "Macro SetBoxValues [S]
+macro "Macro OpenFile [n1]
+macro "Macro SetScale [n.]
+macro "Macro RotateRight [n9]
+macro "Macro RotateLeft [n7]
+macro "Macro MakeGrid [n*]
+macro "Macro RemoveGrid [n/] 
+macro "Macro CropImage [n8]
+macro "Macro RemoveBox [n0]
+macro "Macro RunAnalysis [R]
+macro "Macro ExtractPlPFC [n4] 
+macro "Macro ExtractOlPFC [n5]  
+
+Close all [CNTL]+[Shift]+W  

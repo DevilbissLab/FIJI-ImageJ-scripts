@@ -15,7 +15,25 @@
 
 //Notes: Rotate image until midline is verticle
 //		crop image to midline and include all ROI's
-//		Press the space bar to Temporarily switch to the "hand" (scrolling) tool       
+//		Press the space bar to Temporarily switch to the "hand" (scrolling) tool
+//
+// macro for ImageJ Keyboard shortcuts
+// David Devilbiss
+// Macro Definitions
+//
+//      SetBoxValues [S] - Opens dialog to specify values in plPFC or OFC extraction boxes
+//		RunAnalysis [R] - runs the imaging processing macro (maynot work if path is not correct)
+//
+//		SetScale [n.] - Opens dialog to set the scale pixels per uM scale
+//		RemoveBox [n0] - Used to Clear the box on the screen 
+//		OpenFile [n1] - Use this to Open Files for processing (stores important file information)
+//		ExtractPlPFC [n4] - Macro to extract image from box and save in directory
+//		ExtractOlPFC [n5] - Macro to extract image from box and save in directory
+//		CropImage [n8] - Used to crop image (usually after rotating left or right)
+//		RotateRight [n9]
+//		RotateLeft [n7]
+//		MakeGrid [n*]
+//		RemoveGrid [n/]
 
 var dir = "";
 var FileTitle = "";
@@ -70,7 +88,16 @@ macro "Macro SetBoxValues [S]" {
     	}
 }
 
+macro "Macro Rotate90 [1]" {
+	    print("Rotate the Image Clockwise 90 Degrees");
+        //run("Select None");
+		run("Rotate 90 Degrees Right");
+}
+
 macro "Macro OpenFile [n1]" {
+		print("______________________________________");
+		run("Get_Time");
+		print("Fiji/ImageJ version: " + getVersion());
         print("Opening File");
         run("Open...");
         dir = getDirectory("image");
@@ -115,7 +142,8 @@ macro "Macro MakeGrid [n*]" {
         //print("Create 100x100 uM Grid");
         //run("Grid...", "grid=Lines area=10000 color=Cyan");
         print("Create 50x50 uM Grid");
-        run("Grid...", "grid=Lines area=2500 color=Cyan");
+        run("Grid...", "grid=Lines area=2500 color=Magenta");
+        //run("Grid...", "grid=Lines area=5000 color=Magenta"); // use for images mTBI 
     }
 
 macro "Macro RemoveGrid [n/]" {
@@ -127,7 +155,7 @@ macro "Macro CropImage [n8]" {
         print("Croping Image");
         run("Crop");
         IJ.redirectErrorMessages();
-        run("Stack to RGB");
+        //run("Stack to RGB");
         close("\\Others")
     } 
 
@@ -222,4 +250,20 @@ macro "Macro ExtractOlPFC [n5]" {
         //makeRectangle(0*pixelWidth, 1184*pixelWidth, 1576*pixelWidth, 1328*pixelWidth);
         makeRectangle(px_olPFC_ML, px_olPFC_DV, px_olPFC_width, px_olPFC_height);
     }
+
+  macro "Get_Time" {
+     MonthNames = newArray("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec");
+     DayNames = newArray("Sun", "Mon","Tue","Wed","Thu","Fri","Sat");
+     getDateAndTime(year, month, dayOfWeek, dayOfMonth, hour, minute, second, msec);
+     TimeString ="Date: "+DayNames[dayOfWeek]+" ";
+     if (dayOfMonth<10) {TimeString = TimeString+"0";}
+     TimeString = TimeString+dayOfMonth+"-"+MonthNames[month]+"-"+year+"\nTime: ";
+     if (hour<10) {TimeString = TimeString+"0";}
+     TimeString = TimeString+hour+":";
+     if (minute<10) {TimeString = TimeString+"0";}
+     TimeString = TimeString+minute+":";
+     if (second<10) {TimeString = TimeString+"0";}
+     TimeString = TimeString+second;
+     print(TimeString);
+  	}
     

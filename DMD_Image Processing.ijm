@@ -1,15 +1,28 @@
-//Fiji/ImageJ macro for analyzing axonal density in low magnification sections
+//Fiji/ImageJ macro for analyzing axonal density in stitched high magnification sections
 //David Devilbiss
 //Version 0.1 2018May30
+//Version 0.2 2018Nov18
+//Version 0.3 2018Dec06 - altered ridge detection threshold
 //
 //Depends on the following toolboxes:
 //
-//
+//Requires: 
 //
 // Inspired by: 
 
+// ToDo:
+// Define PFC Slabs needs to aquire ROI data not assume
+
+//This file directorys path
+//curPath = "G:/Team Drives/Software Repository/Git_Repository/ImageJ";
+//print("Current Macro Path: " + curPath);
+curPath = getDir("file")
+print("Current Macro Path: " + curPath);
+
 //Set constants and variables
 nFiles = NaN;
+run("Set Measurements...", "area mean bounding shape display redirect=None decimal=5");
+print("Running DMD_Image Processing");
 
 run("Clear Results");
 if  (isOpen("Summary")) {
@@ -42,8 +55,15 @@ for (i = FileList.length; i > 0; i--) {
 }
 nFiles = FileList.length;
 
-// UI to get axon channel
-AxonColor = getString("enter the color of your axons(r,b,g): //", "r");
+//Create dialog box UI to get axon channel
+Dialog.create("Enter Image analysis information.");
+Dialog.addString("Axon color to analyze (e.g. r,g,b):", "g");
+Dialog.addCheckbox("Use Unbiased Stereology", true);
+Dialog.addCheckbox("Accept Default ROIs", false);
+Dialog.show();
+AxonColor = Dialog.getString();
+doStereology = Dialog.getCheckbox();
+acceptROIs = Dialog.getCheckbox();
 
 //Create dialog box
 PxSize = 1;
@@ -68,6 +88,9 @@ OutputDir = DataDir + "Traced_Images";
 //Process images
 for (curFile = 0; curFile < nFiles; curFile++) {
 	run("Clear Results");
+	roiManager("reset");
+
+	print("     Opening: " + FileList[curFile]);
 	open(DataDir + FileList[curFile]);
 	// get nice file name
 	dot = indexOf(FileList[curFile], ".");
@@ -79,8 +102,22 @@ for (curFile = 0; curFile < nFiles; curFile++) {
     //run("Set Scale...", "distance=0 known=0 pixel=1 unit=pixel");
     // Since this is 1 then all "calculations" are worthless. 
     // add dialog box for user input https://imagej.nih.gov/ij/macros/DialogDemo.txt
-    
 
+	//Allow User to update ROIs
+	if (doStereology == true) {
+	ID = getImageID();
+	print("Running DMD_Define_plPFC_Layers");
+    runMacro(curPath + File.separator + "DMD_Define_plPFC_Layers.ijm");
+    if (acceptROIs != true){
+    title = "Wait For User to Select ROIs";
+    msg = "If necessary, use the \"ROI Manager\" tool to\nadjust the ROIs, then click \"OK\".";
+    waitForUser(title, msg);
+    selectImage(ID);  //make sure we still have the same image
+    // We may need to extract these ROIs for later
+    }
+	}
+
+	
 	//may choose to temp rename so easier to manage channels
 	run("Split Channels");
         if (AxonColor == "r") {
@@ -105,17 +142,73 @@ for (curFile = 0; curFile < nFiles; curFile++) {
     run("Subtract Background...", "rolling="+ 10/pixelWidth +" sliding disable"); //Normalize for pixel size (total 10um)
     run("Enhance Contrast...", "saturated=0.3 normalize");
 
-	run("Ridge Detection", "line_width=5 high_contrast=230 low_contrast=87 make_binary method_for_overlap_resolution=NONE sigma=1.8 lower_threshold=1.51 upper_threshold=7.99 minimum_line_length=5 maximum=0");
+	run("Ridge Detection", "line_width=5 high_contrast=230 low_contrast=87 extend_line make_binary method_for_overlap_resolution=NONE sigma=1.8 lower_threshold=1.51 upper_threshold=3 minimum_line_length=5 maximum=0");
+
+	// version 1 //run("Ridge Detection", "line_width=5 high_contrast=230 low_contrast=87 make_binary method_for_overlap_resolution=NONE sigma=1.8 lower_threshold=1.51 upper_threshold=7.99 minimum_line_length=5 maximum=0");
 	//run("Ridge Detection", "line_width=3.5 high_contrast=230 low_contrast=87 make_binary method_for_overlap_resolution=NONE sigma=1.8 lower_threshold=1.51 upper_threshold=7.99 minimum_line_length=5 maximum=0");
 	run("Invert LUT");
 	rename("Fibers");
+
+if (doStereology == true) {
+// fiber crossing method
+// First make grid and combine with fibers ("AND" operation) then threshold only the crossings
+run("Duplicate...", "title=Grid");
+run("Multiply...", "value=0.00000");
+
+print("Running DMD_Multipurpose_gridMod");
+runMacro(curPath + File.separator + "DMD_Multipurpose_grid.ijm");
+//runMacro("H:/Team Drives/Software Repository/Git_Repository/ImageJ/TSW_Multipurpose_gridMod.ijm", "set=by_area_per_point new line=1 area=2500 regular=cyan dense_0=green horizontal vertical line_0=cyan");
+//runMacro("H:/Team Drives/Software Repository/Git_Repository/ImageJ/TSW_Multipurpose_gridMod.ijm");
+run("Flatten");
+run("8-bit");
+run("Merge Channels...", "c1=Grid-1 c2=Fibers keep ignore");
+run("8-bit");
+setAutoThreshold("Default dark");
+//run("Threshold...");
+setThreshold(127, 255);
+setOption("BlackBackground", false);
+run("Convert to Mask");
+rename("Box_Crossings");
+
+// Loop through ROIs
+// this will be an AND operation between layer ROIs and 50 uM grids
+//ROI manager
+run("Set Scale...", "distance="+ PxSize + " known=1 pixel=1 unit="+ PxUnit +" global");
+print("Running DMD_Define_plPFC_Slabs");
+runMacro(curPath + File.separator + "DMD_Define_plPFC_Slabs.ijm");
+// we now have all the ROIs
+
+setOption("ExpandableArrays", true);
+DataLabel = newArray;
+for (i = 0; i < roiManager("count"); i++){
+roiManager("Select", i);
+run("Analyze Particles...", "size=0-2 clear summarize");
+//run("Analyze Particles...", "size=0-2 display clear summarize");
+//error catch because may have no data
+DataLabel[i] = Roi.getName;
+//DataLabel[i] = getResultLabel(0);
+}
+selectWindow("Summary");
+IJ.renameResults("Summary","Results");
+for (i=0; i<nResults; i++) {
+//setResult("Label", i, DataLabel[i]);
+setResult("Slice", i, DataLabel[i]);
+//
+// now that all slabs are counted, then save out to file.
+}
+
+// do stereology 
+} else {
+
+// all fiber method (original)
 	run("Duplicate...", "title=" + FileList[curFile]);
 	run("Analyze Particles...", "  show=Masks display exclude summarize");
 	// selects skeleton and measures it
 	run("Create Selection");
 	run("Measure");
+} //end doStereology
 
-	// save images in folder
+// save images in folder
 	if (AxonColor == "r") {
 	run("Merge Channels...", "c1=MonoImage c5=EnhancedContrast c7=Fibers create"); //create adds it as a segmented image
 	}
@@ -125,20 +218,35 @@ for (curFile = 0; curFile < nFiles; curFile++) {
     if (AxonColor == "b") {
     	run("Merge Channels...", "c3=MonoImage c5=EnhancedContrast c7=Fibers create"); //create adds it as a segmented image
     }
+    // add ROIs to image
+	if (doStereology == true) {
+		run("Set Scale...", "distance="+ PxSize + " known=1 pixel=1 unit="+ PxUnit +" global");
+		roiManager("Show All");
+		runMacro(curPath + File.separator + "DMD_Multipurpose_grid.ijm");
+		run("Flatten");
+		roiManager("Show All");
+		run("Flatten");
+	}
+
 	//run("Merge Channels...", "c1=MonoImage c5=EnhancedContrast c7=Fibers");
 	saveAs("Tiff", OutputDir + File.separator + FileTitle +"_labeled.tif");
 	//close("*Detected segments");
 	
 	//save individual image calculations
+	if (doStereology == true) {
+	saveAs("Results", OutputDir + File.separator + FileTitle + "_SterologyData.xls");
+	} else {
 	saveAs("Results", OutputDir + File.separator + FileTitle + "_TracingData.xls");
-	close("*");
-	
+	}
+	close("*");	
 }
     //Organizes axon data
-  selectWindow("Summary");
-  saveAs("Text", OutputDir + File.separator + "TracingSummary.xls");
+    if (doStereology == false) {
+  	selectWindow("Summary");
+  	saveAs("Text", OutputDir + File.separator + "TracingSummary.xls");
+    }
 
-  if  (isOpen("Results")) {
+if  (isOpen("Results")) {
 	close("Results");
 	//run("Close");
 }
