@@ -141,7 +141,7 @@ for (curFile = 0; curFile < nFiles; curFile++) {
 	getPixelSize(unit, pixelWidth, pixelHeight);
     run("Subtract Background...", "rolling="+ 10/pixelWidth +" sliding disable"); //Normalize for pixel size (total 10um)
     run("Enhance Contrast...", "saturated=0.3 normalize");
-
+    print("Running Ridge Detection");
 	run("Ridge Detection", "line_width=5 high_contrast=230 low_contrast=87 extend_line make_binary method_for_overlap_resolution=NONE sigma=1.8 lower_threshold=1.51 upper_threshold=3 minimum_line_length=5 maximum=0");
 
 	// version 1 //run("Ridge Detection", "line_width=5 high_contrast=230 low_contrast=87 make_binary method_for_overlap_resolution=NONE sigma=1.8 lower_threshold=1.51 upper_threshold=7.99 minimum_line_length=5 maximum=0");
@@ -183,6 +183,7 @@ DataLabel = newArray;
 for (i = 0; i < roiManager("count"); i++){
 roiManager("Select", i);
 run("Analyze Particles...", "size=0-2 clear summarize");
+//DMD note: 1-4 particle size does capture more. Howoever for the paper we used 0-2 to underestimate. The logic was we wanted fiber crossings not fibers running with the staircase.
 //run("Analyze Particles...", "size=0-2 display clear summarize");
 //error catch because may have no data
 DataLabel[i] = Roi.getName;
