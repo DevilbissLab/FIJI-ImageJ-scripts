@@ -17,6 +17,15 @@
 //curPath = "G:/Team Drives/Software Repository/Git_Repository/ImageJ";
 //print("Current Macro Path: " + curPath);
 curPath = getDir("file")
+if (File.exists(curPath + File.separator + "DMD_Define_plPFC_Layers.ijm") == false) {
+	tPath = "H:\\Shared drives\\Software Repository\\Git_Repository\\ImageJ\\DMD_Define_plPFC_Layers.ijm";
+	if (File.exists(tPath) == false) {
+		print("Macro Path not found: " + tPath);
+		curPath = getDirectory("Choose the current macros directory.");
+	} else {
+		curPath = "H:\\Shared drives\\Software Repository\\Git_Repository\\ImageJ\\";
+	}
+}
 print("Current Macro Path: " + curPath);
 
 //Set constants and variables
@@ -60,13 +69,17 @@ Dialog.create("Enter Image analysis information.");
 Dialog.addString("Axon color to analyze (e.g. r,g,b):", "g");
 Dialog.addCheckbox("Use Unbiased Stereology", true);
 Dialog.addCheckbox("Accept Default ROIs", false);
+Dialog.addCheckbox("Enhance Contrast THEN Subtract Bkgnd.", false);
+Dialog.addString("Ridge Detection Upper Thresh (default = 3):", "3");
 Dialog.show();
 AxonColor = Dialog.getString();
 doStereology = Dialog.getCheckbox();
 acceptROIs = Dialog.getCheckbox();
+ContrastFirst = Dialog.getCheckbox();
+Ridge_UT = Dialog.getString();
 
 //Create dialog box
-PxSize = 1;
+PxSize = 1.324713862; // good place to start for Keyance images
 PxUnit = "micron";
 Dialog.create("Enter the ImageJ scale for these images (px/um)");
 Dialog.addNumber("Pixel Size:", PxSize);
@@ -139,10 +152,18 @@ for (curFile = 0; curFile < nFiles; curFile++) {
     //run("Enhance Contrast...", "saturated=0.3 normalize");
 	//v1.1
 	getPixelSize(unit, pixelWidth, pixelHeight);
+	if (ContrastFirst == false) {
     run("Subtract Background...", "rolling="+ 10/pixelWidth +" sliding disable"); //Normalize for pixel size (total 10um)
     run("Enhance Contrast...", "saturated=0.3 normalize");
+	} else {
+	run("Enhance Contrast...", "saturated=0.3 normalize");
+    run("Subtract Background...", "rolling="+ 10/pixelWidth +" sliding disable"); //Normalize for pixel size (total 10um)
+	print("Running Contrast THEN Background");	
+	}
+
     print("Running Ridge Detection");
-	run("Ridge Detection", "line_width=5 high_contrast=230 low_contrast=87 extend_line make_binary method_for_overlap_resolution=NONE sigma=1.8 lower_threshold=1.51 upper_threshold=3 minimum_line_length=5 maximum=0");
+	run("Ridge Detection", "line_width=5 high_contrast=230 low_contrast=87 extend_line make_binary method_for_overlap_resolution=NONE sigma=1.8 lower_threshold=1.51 upper_threshold="+ Ridge_UT +" minimum_line_length=5 maximum=0");
+	//run("Ridge Detection", "line_width=5 high_contrast=230 low_contrast=87 extend_line make_binary method_for_overlap_resolution=NONE minimum_line_length=5 maximum=0");
 
 	// version 1 //run("Ridge Detection", "line_width=5 high_contrast=230 low_contrast=87 make_binary method_for_overlap_resolution=NONE sigma=1.8 lower_threshold=1.51 upper_threshold=7.99 minimum_line_length=5 maximum=0");
 	//run("Ridge Detection", "line_width=3.5 high_contrast=230 low_contrast=87 make_binary method_for_overlap_resolution=NONE sigma=1.8 lower_threshold=1.51 upper_threshold=7.99 minimum_line_length=5 maximum=0");
