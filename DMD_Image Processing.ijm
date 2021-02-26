@@ -70,11 +70,13 @@ Dialog.addString("Axon color to analyze (e.g. r,g,b):", "g");
 Dialog.addCheckbox("Use Unbiased Stereology", true);
 Dialog.addCheckbox("Accept Default ROIs", false);
 Dialog.addCheckbox("Enhance Contrast THEN Subtract Bkgnd.", false);
+Dialog.addCheckbox("2021 Contrast and Bkgnd.", true);
 Dialog.addString("Ridge Detection Upper Thresh (default = 3):", "3");
 Dialog.show();
 AxonColor = Dialog.getString();
 doStereology = Dialog.getCheckbox();
 acceptROIs = Dialog.getCheckbox();
+Contrast2021 = Dialog.getCheckbox();
 ContrastFirst = Dialog.getCheckbox();
 Ridge_UT = Dialog.getString();
 
@@ -152,6 +154,18 @@ for (curFile = 0; curFile < nFiles; curFile++) {
     //run("Enhance Contrast...", "saturated=0.3 normalize");
 	//v1.1
 	getPixelSize(unit, pixelWidth, pixelHeight);
+	if (Contrast2021 == true){
+		run("Enhance Contrast...", "saturated=1.0"); // do not alter pixel values
+		
+		getMinAndMax(px_min, px_max);
+		if (px_min < 25) {
+			px_min = 25;
+		}
+	//run("Brightness/Contrast...");
+	setMinAndMax(px_min, px_max);
+	run("Subtract Background...", "rolling="+ 200/pixelWidth +" sliding disable"); //Normalize for pixel size (total 200um)
+	print("Running 2021Contrast / Background");	
+	}else{
 	if (ContrastFirst == false) {
     run("Subtract Background...", "rolling="+ 10/pixelWidth +" sliding disable"); //Normalize for pixel size (total 10um)
     run("Enhance Contrast...", "saturated=0.3 normalize");
@@ -159,6 +173,7 @@ for (curFile = 0; curFile < nFiles; curFile++) {
 	run("Enhance Contrast...", "saturated=0.3 normalize");
     run("Subtract Background...", "rolling="+ 10/pixelWidth +" sliding disable"); //Normalize for pixel size (total 10um)
 	print("Running Contrast THEN Background");	
+	}
 	}
 
     print("Running Ridge Detection");
