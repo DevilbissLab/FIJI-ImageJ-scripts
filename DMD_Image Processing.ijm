@@ -76,8 +76,8 @@ Dialog.show();
 AxonColor = Dialog.getString();
 doStereology = Dialog.getCheckbox();
 acceptROIs = Dialog.getCheckbox();
-Contrast2021 = Dialog.getCheckbox();
 ContrastFirst = Dialog.getCheckbox();
+Contrast2021 = Dialog.getCheckbox();
 Ridge_UT = Dialog.getString();
 
 //Create dialog box
@@ -89,6 +89,23 @@ Dialog.addString("Unit (e.g. micron):", PxUnit);
 Dialog.show();
 PxSize = Dialog.getNumber();
 PxUnit = Dialog.getString();
+
+// Use analysis fork to determine parameters
+if (Contrast2021 == true){
+	ContrastBallSize = 10;//um was 200
+} else {
+	ContrastBallSize = 10;// um
+}
+
+//Report all Parameters:
+print("Analyzing Channel: " + AxonColor);
+print("Unbiased Stereology: " + doStereology);
+print("Default ROIs: " + acceptROIs);
+print("2021 Contrast: " + Contrast2021);
+print("Enhance Contrast THEN Subtract Bkgnd.: " + ContrastFirst);
+print("Ridge Detection Upper Thresh: " + Ridge_UT);
+print("ImageJ scale for these images (px/um): " + PxSize);
+print("Contrast Ball Size: " + ContrastBallSize);
 
 //Create output folder
 OutputDir = DataDir + "Traced_Images";
@@ -155,29 +172,78 @@ for (curFile = 0; curFile < nFiles; curFile++) {
 	//v1.1
 	getPixelSize(unit, pixelWidth, pixelHeight);
 	if (Contrast2021 == true){
-		run("Enhance Contrast...", "saturated=1.0"); // do not alter pixel values
+		// 1) force min px value to 0
+		getStatistics(px_area, px_mean, px_min, px_max, px_std);
+		run("Subtract...", "value=" + px_min);
 		
-		getMinAndMax(px_min, px_max);
-		if (px_min < 25) {
-			px_min = 25;
-		}
-	//run("Brightness/Contrast...");
-	setMinAndMax(px_min, px_max);
-	run("Subtract Background...", "rolling="+ 200/pixelWidth +" sliding disable"); //Normalize for pixel size (total 200um)
-	print("Running 2021Contrast / Background");	
+		// 2) Do a modified contrast enhancement
+		// use auto enhance to get max value
+		// calculate min value as 1 SD below the mean
+		getStatistics(px_area, px_mean, px_min, px_max, px_std);
+		//print(px_mean, px_min, px_max, px_std);
+		run("Enhance Contrast", "saturated=0.35");
+		getMinAndMax(CurImg_min, CurImg_max);
+			CurImg_min = px_mean-px_std;
+		print("px_mean " + px_mean);
+		print("px_std " + px_std);
+		print("px_median " + getValue("Median"));
+		print("CurImg_min " + CurImg_min);
+		
+		// 3) apply the new mapping to image
+		setMinAndMax(CurImg_min, CurImg_max);
+		print("Setting contrast input range to (Min, Max): " + CurImg_min + ", " + CurImg_max);
+		run("Apply LUT");
+
+		// 4) Subtract Background
+		print("Subtracting background using sliding parabola, no smoothing, rolling ball (px): "+ 1*pixelWidth);  
+		run("Subtract Background...", "rolling="+ 1*pixelWidth +" sliding disable");
+
+    print("Running Ridge Detection");
+    getStatistics(px_area, px_mean, px_min, px_max, px_std);
+	run("Ridge Detection", "line_width=" + 5*pixelWidth + " high_contrast=128 low_contrast="+ px_mean+parseFloat(Ridge_UT)*px_std + " extend_line make_binary method_for_overlap_resolution=NONE minimum_line_length=" + 8.5*pixelWidth + " maximum=0");
+
+//Old 2021 approachs
+
+		/////////////////////////////Solution #1//////////////////////////////////////
+		//run("Bandpass Filter...", "filter_large="+ 5*pixelWidth +" filter_small=0 suppress=None tolerance=5");
+		//run("Subtract Background...", "rolling="+ 5*pixelWidth +" sliding disable");
+		//run("Enhance Contrast...", "saturated=0.35 normalize");
+
+		/////////////////////////////Solution #2//////////////////////////////////////
+//		getStatistics(CurImg_area, CurImg_mean, CurImg_min, CurImg_max, CurImg_std);
+//		run("Enhance Contrast", "saturated=0.35");
+//		getMinAndMax(CurImg_min, CurImg_max);
+//		if (CurImg_min < 25) {
+//			CurImg_min = 25;
+//		}
+//		print("Before set minMax");
+//		wait(3000);
+//		setMinAndMax(CurImg_min-CurImg_std, CurImg_max);
+//		run("Apply LUT");
+		////////////////////////////////////////////////////////////////////
+			
+//		run("Enhance Contrast...", "saturated=1.0 normalize"); // do not alter pixel values
+//		getMinAndMax(px_min, px_max);
+//		if (px_min < 25) {
+//			px_min = 25;
+//		}
+//	setMinAndMax(px_min, px_max);
+//	//run("Subtract Background...", "rolling="+ ContrastBallSize/pixelWidth +" sliding disable"); //Normalize for pixel size (total 200um)
+//	print("Running 2021Contrast / Background (px): " + ContrastBallSize/pixelWidth);	
 	}else{
 	if (ContrastFirst == false) {
-    run("Subtract Background...", "rolling="+ 10/pixelWidth +" sliding disable"); //Normalize for pixel size (total 10um)
+    run("Subtract Background...", "rolling="+ ContrastBallSize/pixelWidth +" sliding disable"); //Normalize for pixel size (total 10um)
     run("Enhance Contrast...", "saturated=0.3 normalize");
 	} else {
 	run("Enhance Contrast...", "saturated=0.3 normalize");
-    run("Subtract Background...", "rolling="+ 10/pixelWidth +" sliding disable"); //Normalize for pixel size (total 10um)
+    run("Subtract Background...", "rolling="+ ContrastBallSize/pixelWidth +" sliding disable"); //Normalize for pixel size (total 10um)
 	print("Running Contrast THEN Background");	
 	}
-	}
-
     print("Running Ridge Detection");
 	run("Ridge Detection", "line_width=5 high_contrast=230 low_contrast=87 extend_line make_binary method_for_overlap_resolution=NONE sigma=1.8 lower_threshold=1.51 upper_threshold="+ Ridge_UT +" minimum_line_length=5 maximum=0");
+	}
+
+
 	//run("Ridge Detection", "line_width=5 high_contrast=230 low_contrast=87 extend_line make_binary method_for_overlap_resolution=NONE minimum_line_length=5 maximum=0");
 
 	// version 1 //run("Ridge Detection", "line_width=5 high_contrast=230 low_contrast=87 make_binary method_for_overlap_resolution=NONE sigma=1.8 lower_threshold=1.51 upper_threshold=7.99 minimum_line_length=5 maximum=0");
