@@ -29,6 +29,7 @@
 //		OpenFile [n1] - Use this to Open Files for processing (stores important file information)
 //		ExtractPlPFC [n4] - Macro to extract image from box and save in directory
 //		ExtractOlPFC [n5] - Macro to extract image from box and save in directory
+//		ExtractM1 [n6] - Macro to extract image from box and save in directory
 //		CropImage [n8] - Used to crop image (usually after rotating left or right)
 //		RotateRight [n9]
 //		RotateLeft [n7]
@@ -36,7 +37,9 @@
 //		RemoveGrid [n/]
 
 var dir = "";
+var OutputDir = "";
 var FileTitle = "";
+var OutputFileTitle = "";
 var def_plPFC_DV = 2.3; // 3 mm
 var def_plPFC_ML = 0; // 0 mm
 var def_plPFC_width = 1.1; // 0 mm
@@ -45,6 +48,11 @@ var def_olPFC_DV = 3.7; // 3 mm
 var def_olPFC_ML = 2.25; // 0 mm
 var def_olPFC_width = 1.1; // 0 mm
 var def_olPFC_height = 1.1; // 0 mm
+
+var def_M1_DV = 0; // 3 mm
+var def_M1_ML = 1.2; // 0 mm
+var def_M1_width = 1.8; // 0 mm
+var def_M1_height = 1.8; // 0 mm
 //
 var plPFC_DV = def_plPFC_DV;
 var plPFC_ML = def_plPFC_ML;
@@ -55,6 +63,11 @@ var olPFC_ML = def_olPFC_ML;
 var olPFC_width = def_olPFC_width;
 var olPFC_height = def_olPFC_height;
 
+var M1_DV = def_M1_DV;
+var M1_ML = def_M1_ML;
+var M1_width = def_M1_width;
+var M1_height = def_M1_height;
+
 
 macro "Macro SetBoxValues [S]" {
 	//Create dialog box
@@ -63,12 +76,16 @@ macro "Macro SetBoxValues [S]" {
 	Dialog.addNumber("plPFC ML:", plPFC_ML);
 	Dialog.addNumber("olPFC DV:", olPFC_DV);
 	Dialog.addNumber("olPFC ML:", olPFC_ML);
+	Dialog.addNumber("M1 DV:", M1_DV);
+	Dialog.addNumber("M1 ML:", M1_ML);
 	Dialog.addCheckbox("Reset Values",false);
 	Dialog.show();
 	temp_plPFC_DV = Dialog.getNumber();
 	temp_plPFC_ML = Dialog.getNumber();
 	temp_olPFC_DV = Dialog.getNumber();
 	temp_olPFC_ML = Dialog.getNumber();
+	temp_M1_DV = Dialog.getNumber();
+	temp_M1_ML = Dialog.getNumber();
 	reset_ck = Dialog.getCheckbox();
 
     if (reset_ck) {
@@ -79,12 +96,18 @@ macro "Macro SetBoxValues [S]" {
     	    olPFC_DV = def_olPFC_DV;
     	    olPFC_ML = def_olPFC_ML;
     	    olPFC_width = def_olPFC_width;
-    	    olPFC_height = def_olPFC_height;    
+    	    olPFC_height = def_olPFC_height;
+    	    M1_DV = def_M1_DV;
+    	    M1_ML = def_M1_ML;
+    	    M1_width = def_M1_width;
+    	    M1_height = def_M1_height;      
     	} else {
 			plPFC_DV = temp_plPFC_DV;
 			plPFC_ML = temp_plPFC_ML;
 			olPFC_DV = temp_olPFC_DV;
 			olPFC_ML = temp_olPFC_ML;
+			M1_DV = temp_M1_DV;
+			M1_ML = temp_M1_ML;
     	}
 }
 
@@ -165,8 +188,20 @@ macro "Macro RemoveBox [n0]" {
     }
 
 macro "Macro RunAnalysis [R]" {
-		print("Running DMD_Image Processing");
-        runMacro("D:/Team Drives/Software Repository/Git_Repository/ImageJ/DMD_Image Processing.ijm")
+		//print("Running DMD_Image Processing");
+        //runMacro("D:/Team Drives/Software Repository/Git_Repository/ImageJ/DMD_Image Processing.ijm")
+        selectWindow(OutputFileTitle);
+        print("Rotating 90deg left: " + OutputFileTitle);
+        rot90OutputDir = OutputDir + File.separator + "rot90";
+        if (!File.exists(rot90OutputDir)) {
+    	    exit("Unable to create rot90 directory");
+    	} else {
+			//prints values just to check in the log
+			print("Created: " + rot90OutputDir);
+    	}
+        run("Rotate 90 Degrees Left");
+        print("Saving to: " + rot90OutputDir + File.separator + FileTitle +"_rot90.tif" );
+        saveAs("Tiff", rot90OutputDir + File.separator + FileTitle +"_rot90.tif");
     }
 
 macro "Macro ExtractPlPFC [n4]" {
@@ -184,6 +219,7 @@ macro "Macro ExtractPlPFC [n4]" {
     	}
         imageTitle=getTitle();//returns a string with the image title
         run("Duplicate...", "title=" + FileTitle + "_plPFC.tif");
+        OutputFileTitle=getTitle();//returns a string with the image title
         getPixelSize(unit, pixelWidth, pixelHeight);
         CalValue = 1/pixelHeight;
 		px_plPFC_DV = 1000*plPFC_DV*CalValue;
@@ -229,6 +265,7 @@ macro "Macro ExtractOlPFC [n5]" {
     	}
         imageTitle=getTitle();//returns a string with the image title
         run("Duplicate...", "title=" + FileTitle + "_olPFC.tif");
+        OutputFileTitle=getTitle();//returns a string with the image title
         getPixelSize(unit, pixelWidth, pixelHeight);
         CalValue = 1/pixelHeight;
 		px_olPFC_DV = 1000*olPFC_DV*CalValue;
@@ -249,6 +286,47 @@ macro "Macro ExtractOlPFC [n5]" {
         selectWindow(imageTitle);
         //makeRectangle(0*pixelWidth, 1184*pixelWidth, 1576*pixelWidth, 1328*pixelWidth);
         makeRectangle(px_olPFC_ML, px_olPFC_DV, px_olPFC_width, px_olPFC_height);
+    }
+
+macro "Macro ExtractM1 [n6]" {
+		run("Select None");
+		print("Extracting M1");
+
+		//Create output folder
+		OutputDir = dir + "M1";
+    	File.makeDirectory(OutputDir);
+    	if (!File.exists(OutputDir)) {
+    	    exit("Unable to create directory");
+    	} else {
+			//prints values just to check in the log
+			print("Created: " + OutputDir);
+    	}
+        imageTitle=getTitle();//returns a string with the image title
+        IJ.redirectErrorMessages();
+		close(OutputFileTitle);
+		
+        run("Duplicate...", "title=" + FileTitle + "_M1.tif");
+        OutputFileTitle=getTitle();//returns a string with the image title
+        getPixelSize(unit, pixelWidth, pixelHeight);
+        CalValue = 1/pixelHeight;
+		px_M1_DV = 1000*M1_DV*CalValue;
+		px_M1_ML = 1000*M1_ML*CalValue;
+		px_M1_width = 1000*M1_width*CalValue;
+		px_M1_height = 1000*M1_height*CalValue;
+		print("Making Rectangle (um): " + M1_width +"(W) x " + M1_height + "(H) at " + M1_DV + "(DV) x " + M1_ML +"(ML)");
+		print("Making Rectangle (px): " + px_M1_width +"(W) x " + px_M1_height + "(H) at " + px_M1_DV + "(DV) x " + px_M1_ML +"(ML)");
+        makeRectangle(px_M1_ML, px_M1_DV, px_M1_width, px_M1_height);
+        //makeRectangle(0*pixelWidth, 608*pixelWidth, 788*pixelWidth, 680*pixelWidth); in pixels
+        //makeRectangle(0*pixelWidth, 1184*pixelWidth, 1576*pixelWidth, 1328*pixelWidth);
+        //makeRectangle(x, y, width, height)
+        //The x and y arguments are the coordinates (in pixels) 
+        run("Crop");
+        print("Saving to: " + OutputDir + File.separator + FileTitle +"_M1.tif" );
+        saveAs("Tiff", OutputDir + File.separator + FileTitle +"_M1.tif");
+        //Redraw window for validation
+        selectWindow(imageTitle);
+        //makeRectangle(0*pixelWidth, 1184*pixelWidth, 1576*pixelWidth, 1328*pixelWidth);
+        makeRectangle(px_M1_ML, px_M1_DV, px_M1_width, px_M1_height);
     }
 
   macro "Get_Time" {
