@@ -22,7 +22,9 @@
 // Macro Definitions
 //
 //      SetBoxValues [S] - Opens dialog to specify values in plPFC or OFC extraction boxes
-//		RunAnalysis [R] - runs the imaging processing macro (maynot work if path is not correct)
+//		Obsolete - RunAnalysis [R] - runs the imaging processing macro (maynot work if path is not correct)
+//		Rotate90R [R] - Rotate Image 90 deg to the R and save in subdir
+//		Rotate90L [L] - Rotate Image 90 deg to the L and save in subdir
 //
 //		SetScale [n.] - Opens dialog to set the scale pixels per uM scale
 //		RemoveBox [n0] - Used to Clear the box on the screen 
@@ -37,7 +39,7 @@
 //		RemoveGrid [n/]
 
 var dir = "";
-var OutputDir = "";
+var OutputDir = "";	// Generated in ExtractPlPFC, etc
 var FileTitle = "";
 var OutputFileTitle = "";
 var def_plPFC_DV = 2.3; // 3 mm
@@ -111,12 +113,6 @@ macro "Macro SetBoxValues [S]" {
     	}
 }
 
-macro "Macro Rotate90 [1]" {
-	    print("Rotate the Image Clockwise 90 Degrees");
-        //run("Select None");
-		run("Rotate 90 Degrees Right");
-}
-
 macro "Macro OpenFile [n1]" {
 		print("______________________________________");
 		run("Get_Time");
@@ -187,21 +183,82 @@ macro "Macro RemoveBox [n0]" {
         run("Select None");
     }
 
-macro "Macro RunAnalysis [R]" {
+macro "Macro Rotate90R [R]" {
 		//print("Running DMD_Image Processing");
         //runMacro("D:/Team Drives/Software Repository/Git_Repository/ImageJ/DMD_Image Processing.ijm")
-        selectWindow(OutputFileTitle);
-        print("Rotating 90deg left: " + OutputFileTitle);
-        rot90OutputDir = OutputDir + File.separator + "rot90";
+
+		//generate output dir
+		if (File.isDirectory(OutputDir)){
+			rot90OutputDir = OutputDir + File.separator + "rot90";
+		} else {
+			rot90OutputDir = getDirectory("image") + "rot90";
+		}
+		
+        File.makeDirectory(rot90OutputDir);
         if (!File.exists(rot90OutputDir)) {
-    	    exit("Unable to create rot90 directory");
+    	    exit("Unable to create directory");
     	} else {
 			//prints values just to check in the log
 			print("Created: " + rot90OutputDir);
     	}
+
+        //Check for stored OutputFileTitle  << means ExtractPlPFC was run    
+        //IJ.redirectErrorMessages();
+        if (OutputFileTitle == ""){
+        	OutputFileTitle = getTitle();
+        } else {
+        	selectWindow(OutputFileTitle);
+        }
+
+		// get nice file title
+		dot = indexOf(getTitle(), ".");
+		if (dot >= 0) {
+			FileTitle = substring(getTitle(), 0, dot);
+		}
+		print("Rotating 90deg Right: " + FileTitle);
+        run("Rotate 90 Degrees Right");
+        print("Saving to: " + rot90OutputDir + File.separator + FileTitle +"_rot90.tif" );
+        saveAs("Tiff", rot90OutputDir + File.separator + FileTitle +"_rot90.tif");
+        OutputFileTitle = "";
+    }
+
+macro "Macro Rotate90L [L]" {
+		//print("Running DMD_Image Processing");
+        //runMacro("D:/Team Drives/Software Repository/Git_Repository/ImageJ/DMD_Image Processing.ijm")
+        
+		//generate output dir
+		if (File.isDirectory(OutputDir)){
+			rot90OutputDir = OutputDir + File.separator + "rot90";
+		} else {
+			rot90OutputDir = getDirectory("image") + "rot90";
+		}
+		
+        File.makeDirectory(rot90OutputDir);
+        if (!File.exists(rot90OutputDir)) {
+    	    exit("Unable to create directory");
+    	} else {
+			//prints values just to check in the log
+			print("Created: " + rot90OutputDir);
+    	}
+
+        //Check for stored OutputFileTitle  << means ExtractPlPFC was run    
+        //IJ.redirectErrorMessages();
+        if (OutputFileTitle == ""){
+        	OutputFileTitle = getTitle();
+        } else {
+        	selectWindow(OutputFileTitle);
+        }
+
+		// get nice file title
+		dot = indexOf(getTitle(), ".");
+		if (dot >= 0) {
+			FileTitle = substring(getTitle(), 0, dot);
+		}
+		print("Rotating 90deg Left: " + FileTitle);
         run("Rotate 90 Degrees Left");
         print("Saving to: " + rot90OutputDir + File.separator + FileTitle +"_rot90.tif" );
         saveAs("Tiff", rot90OutputDir + File.separator + FileTitle +"_rot90.tif");
+        OutputFileTitle = "";
     }
 
 macro "Macro ExtractPlPFC [n4]" {

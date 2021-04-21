@@ -15,8 +15,10 @@ macro "Macro MakeGrid [n*]
 macro "Macro RemoveGrid [n/] 
 macro "Macro CropImage [n8]
 macro "Macro RemoveBox [n0]
-macro "Macro RunAnalysis [R]
 macro "Macro ExtractPlPFC [n4] 
-macro "Macro ExtractOlPFC [n5]  
+macro "Macro ExtractOlPFC [n5]
+
+macro "Macro Rotate90R" [R] - Rotate Image 90 deg to the R and save in subdir
+macro "Macro Rotate90L [L] - Rotate Image 90 deg to the L and save in subdir  
 
 Close all [CNTL]+[Shift]+W  
